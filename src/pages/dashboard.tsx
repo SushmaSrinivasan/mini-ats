@@ -7,6 +7,9 @@ export default function Dashboard() {
   const [role, setRole] = useState<string | null>(null)
   const [customer, setCustomer] = useState<any>(null)
   const [companyName, setCompanyName] = useState('')
+  const [jobs, setJobs] = useState<any[]>([])
+const [jobTitle, setJobTitle] = useState('')
+const [jobDescription, setJobDescription] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -36,11 +39,21 @@ export default function Dashboard() {
 
       if (customerData) {
         setCustomer(customerData)
+        fetchJobs(customerData.id)
       }
     }
 
     getUser()
   }, [])
+
+    const fetchJobs = async (customerId: string) => {
+    const { data } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('customer_id', customerId)
+
+    if (data) setJobs(data)
+  }
 
   const createCustomer = async () => {
     const { data, error } = await supabase
@@ -58,6 +71,30 @@ export default function Dashboard() {
     }
 
     setCustomer(data)
+    setCompanyName('')
+  }
+
+  const createJob = async () => {
+    if (!jobTitle) return alert('Enter job title')
+
+    const { data, error } = await supabase
+      .from('jobs')
+      .insert({
+        title: jobTitle,
+        description: jobDescription,
+        customer_id: customer.id,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    setJobs([...jobs, data])
+    setJobTitle('')
+    setJobDescription('')
   }
 
   const logout = async () => {
@@ -72,14 +109,17 @@ export default function Dashboard() {
       <p><strong>Email:</strong> {user?.email}</p>
       <p><strong>Role:</strong> {role}</p>
 
+      {/* If no company */}
       {!customer ? (
         <div>
           <h3>Create Your Company</h3>
+
           <input
             placeholder="Company name"
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
           />
+
           <br /><br />
           <button onClick={createCustomer}>Create Company</button>
         </div>
@@ -87,6 +127,45 @@ export default function Dashboard() {
         <div>
           <h3>Your Company:</h3>
           <p>{customer.name}</p>
+
+          <hr />
+
+          <h3>Create Job</h3>
+
+          <input
+            placeholder="Job title"
+            value={jobTitle}
+            onChange={(e) => setJobTitle(e.target.value)}
+          />
+
+          <br /><br />
+
+          <textarea
+            placeholder="Job description"
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
+          />
+
+          <br /><br />
+
+          <button onClick={createJob}>Create Job</button>
+
+          <hr />
+
+          <h3>Your Jobs</h3>
+
+          {jobs.length === 0 && <p>No jobs yet.</p>}
+
+          <ul>
+            {jobs.map((job) => (
+              <li key={job.id}>
+                <strong>{job.title}</strong>
+                <br />
+                {job.description}
+                <br /><br />
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
